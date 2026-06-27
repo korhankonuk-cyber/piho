@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LGS 2027 — Pursaklar İmam Hatip Ortaokulu</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#0D0818;max-width:100%;overflow-x:hidden;font-family:'Inter',sans-serif}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:#130D24}
+::-webkit-scrollbar-thumb{background:#E040FB33;border-radius:3px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useMemo, useRef } = React;
+
+// ── RENK PALETİ ──
+const C = {
+  bg:"#0D0818",bg2:"#130D24",card:"#18102E",
+  neon:"#E040FB",neonD:"#AA00FF",purple:"#FF4FC8",
+  green:"#00E5AA",yellow:"#FFD700",orange:"#FF6B9D",
+  red:"#FF3B6B",blue:"#8B5CF6",pink:"#FF49D8",
+  text:"#F0E8FF",text2:"#B098D0",text3:"#6A507A",
+  border:"rgba(224,64,251,0.15)",
+};
+
+const KILAVUZ_EM = "👩‍🏫";
+const KILAVUZ_AD = "PİHO HOCA";
+
+// ── TTS ──
+const TTS_PROXY = "https://piho-tts.korhankonuk.workers.dev";
+// Piho Hoca sesi — erkek klon
+const PIHO_VOICE_ID = "2thYbn2sOGtiTwd9QwWH";
+const DOGRU_TTS = [
+  "İşte bu! Harikasın, tam isabet!",
+  "Tebrikler! İşte tam aradığımız cevap, süpersin!",
+  "Mükemmel! Tam on ikiden vurdun, kutlarım!",
+  "Harika iş çıkardın! Tam şampiyon gibi düşündün, bravo!",
+  "Efsanesin! PİHO'nun gururusun, aynen böyle devam!",
+];
+const YANLIS_TTS = [
+  "Hiç dert etme, hatalar bizim en iyi öğretmenimizdir. Gel, beraber bakalım mı?",
+  "Pes etmek yok! Her yanlış, bizi doğruya götüren bir basamak aslında. Hadi bir daha deneyelim!",
+  "Piho Hoca olarak sana güvenim tam; bu soruyu birlikte çözeceğiz, çok az kaldı!",
+  "Beyin kasların şu an gelişiyor, zorlandığını hissediyorum ama başaracaksın! Haydi, tekrar bir bakalım.",
+  "Şampiyonlar asla vazgeçmez, biliyorum. Gel, bu sefer beraber farklı bir yoldan gidelim.",
+];
+const KILAVUZ_TTS = [
+  "Selam! Ben Piho Hoca. Bugün beraber harika bir çalışma yapacağız; cevabı değil, çözmenin keyfini birlikte keşfedeceğiz!",
+  "Merhaba! Piho Hoca yanında. Sıkı dur, tartışma yöntemimizle işleri biraz karıştırıp doğruya beraber ulaşacağız. Hazır mısın?",
+  "Hoş geldin! Ben Piho Hoca. Cevabı doğrudan söylemek yerine, cevaba giden yolu beraber bulmaya ne dersin?",
+];
+
+let ttsAudio = null;
+async function pihoTTS(metin) {
+  if(ttsAudio){try{ttsAudio.pause();}catch(e){}ttsAudio=null;}
+  try {
+    const res = await fetch(TTS_PROXY, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({text:metin}),
+    });
+    if(!res.ok){console.warn("TTS hata:",res.status);return;}
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    ttsAudio = audio;
+    audio.onended = ()=>{URL.revokeObjectURL(url);ttsAudio=null;};
+    audio.onerror = ()=>{URL.revokeObjectURL(url);ttsAudio=null;};
+    audio.play().catch(e=>console.warn("Autoplay:",e));
+  } catch(e){console.warn("TTS istisna:",e);}
+}
+function pihoTTSRastgele(tip){
+  const liste = tip==="dogru"?DOGRU_TTS:tip==="yanlis"?YANLIS_TTS:KILAVUZ_TTS;
+  pihoTTS(liste[Math.floor(Math.random()*liste.length)]);
+}
+
+function sesiCal(tip){
+  pihoTTSRastgele(tip==="dogru"?"dogru":"yanlis");
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    if(tip==="dogru"){
+      [[523.25,0],[783.99,0.12],[1046.50,0.24]].forEach(([f,t])=>{
+        const o=ctx.createOscillator(),g=ctx.createGain();
+        o.connect(g);g.connect(ctx.destination);o.type="square";o.frequency.value=f;
+        g.gain.setValueAtTime(0,ctx.currentTime+t);
+        g.gain.linearRampToValueAtTime(0.06,ctx.currentTime+t+0.02);
+        g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.20);
+        o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.22);
+      });
+    } else {
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);o.type="sine";
+      o.frequency.setValueAtTime(500,ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(180,ctx.currentTime+0.4);
+      g.gain.setValueAtTime(0,ctx.currentTime);
+      g.gain.linearRampToValueAtTime(0.08,ctx.currentTime+0.03);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.45);
+      o.start(ctx.currentTime);o.stop(ctx.currentTime+0.5);
+    }
+  }catch(e){}
+}
+
+// ── DERSLER ──
+const DERSLER = [
+  {id:"tur",ad:"Türkçe",renk:C.purple,em:"📖",soru:20,sira:1,katsayi:4},
+  {id:"mat",ad:"Matematik",renk:C.neon,em:"📐",soru:20,sira:2,katsayi:4},
+  {id:"fen",ad:"Fen Bilimleri",renk:C.green,em:"🔬",soru:20,sira:3,katsayi:4},
+  {id:"ink",ad:"T.C. İnkılap Tarihi",renk:C.orange,em:"🏛️",soru:10,sira:4,katsayi:1},
+  {id:"din",ad:"Din Kültürü",renk:C.yellow,em:"☪️",soru:10,sira:5,katsayi:1},
+  {id:"ing",ad:"İngilizce",renk:C.blue,em:"🌐",soru:10,sira:6,katsayi:1},
+];
+
+const KONULAR = {
+  tur:["PARAGRAF ANLAMA","SÖZ VARLIĞI","SÖZCÜK TÜRLERİ","FİİL ÇATISI","CÜMLE ÖGELERİ","YAZIM KURALLARI","NOKTALAMA","DEYİM & ATASÖZLERİ","SÖZ SANATLARI"],
+  mat:["ÜSLÜ İFADELER","KAREKÖKLİ İFADELER","OLASILIK","FONKSİYONLAR","ÜÇGENLER","DENKLEMLER","VERİ ANALİZİ","EBOB-EKOK","HIZ-MESAFE-ZAMAN"],
+  fen:["DNA & GENETİK","ELEKTRİK","KUVVET & HAREKET","BASINÇ","MADDE HALLERİ","FOTOSENTEZ","EKOSİSTEM","KİMYASAL TEPKİMELER","IŞIK & OPTİK"],
+  ink:["MONDROS & İŞGALLER","TBMM'NİN AÇILIŞI","KURTULUŞ SAVAŞI","LOZAN ANTLAŞMASI","İNKILAPLAR","ATATÜRKÇÜLÜK","CUMHURİYET DÖNEMİ"],
+  din:["İMAN ESASLARI","İBADETLER","HZ. MUHAMMED","KUR'AN İLİMLERİ","AHLAK & DEĞERLER","ZEKAT & SADAKA","İSLAM HUKUKU"],
+  ing:["READING COMPREHENSION","GRAMMAR IN USE","VOCABULARY IN CONTEXT","DIALOGUE COMPLETION","LINKING WORDS","OPINION & ARGUMENT"],
+};
+
+function normDers(v){if(!v)return{dogru:0,yanlis:0,bos:0};return{dogru:v.dogru??0,yanlis:v.yanlis??0,bos:v.bos??0};}
+function hesaplaPuan(s){
+  let ag=0;
+  DERSLER.forEach(d=>{const v=normDers(s.dersler[d.id]);ag+=(v.dogru-v.yanlis/3)*(d.katsayi||1);});
+  return Math.max(200,Math.min(500,Math.round((200+ag)*100)/100));
+}
+function hesaplaNet(s){let t=0;DERSLER.forEach(d=>{const v=normDers(s.dersler[d.id]);t+=v.dogru-v.yanlis/3;});return Math.round(t*100)/100;}
+
+// ── CLAUDE API ──
+async function callClaude(prompt,system,maxTokens=1000){
+  const body={model:"claude-sonnet-4-6",max_tokens:maxTokens,messages:[{role:"user",content:String(prompt)}]};
+  if(system) body.system=String(system);
+  const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(!res.ok) throw new Error("HTTP "+res.status);
+  const data=await res.json();
+  return (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("")||"";
+}
+
+// ── CSS ──
+function injectCSS(){
+  if(document.getElementById("lgs-st"))return;
+  const s=document.createElement("style");s.id="lgs-st";
+  s.textContent=`
+    @keyframes fu{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes si{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:translateX(0)}}
+    @keyframes pageIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes ri{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+    @keyframes pulseMid{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+    @keyframes lgsRing{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    @keyframes soruGel{0%{opacity:0;transform:translateY(20px) scale(.96)}60%{transform:translateY(-4px) scale(1.01)}100%{opacity:1;transform:translateY(0) scale(1)}}
+    @keyframes sikGel{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+    @keyframes aciklamaGel{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes ikonPat{0%{transform:scale(0) rotate(-20deg)}60%{transform:scale(1.3) rotate(8deg)}100%{transform:scale(1) rotate(0deg)}}
+    @keyframes dogruTikCevre{from{stroke-dashoffset:220}to{stroke-dashoffset:0}}
+    @keyframes dogruTikIsaret{from{stroke-dashoffset:60}to{stroke-dashoffset:0}}
+    @keyframes dogruRipple{0%{opacity:.8;transform:translateX(-50%) scale(1)}100%{opacity:0;transform:translateX(-50%) scale(2.4)}}
+    @keyframes typing{0%,100%{opacity:1}50%{opacity:.3}}
+    @keyframes marquee{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
+    @keyframes fadeStep{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes spinOrbit{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    @keyframes perdeSolAc{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}
+    @keyframes perdeSagAc{0%{transform:translateX(0)}100%{transform:translateX(100%)}}
+    @keyframes perdeIcerik{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes dogruTikCevre{from{stroke-dashoffset:220}to{stroke-dashoffset:0}}
+    @keyframes dogruTikIsaret{from{stroke-dashoffset:60}to{stroke-dashoffset:0}}
+    @keyframes nefesAl{0%,100%{box-shadow:0 0 6px var(--krenk),inset 0 0 6px transparent}50%{box-shadow:0 0 30px var(--krenk),inset 0 0 16px var(--krenk)}}
+    @keyframes geriYanarSoner{0%,100%{opacity:1;box-shadow:0 0 8px currentColor}50%{opacity:.55;box-shadow:0 0 22px currentColor}}
+    @keyframes geriOk{0%,100%{transform:translateX(0)}40%{transform:translateX(-5px)}70%{transform:translateX(2px)}}
+    .geri-btn{animation:geriYanarSoner 1.6s ease-in-out infinite}
+    .geri-ok{display:inline-block;animation:geriOk 1.6s ease-in-out infinite}
+    .perde-sol-ac{animation:perdeSolAc .65s cubic-bezier(.6,0,.4,1) forwards}
+    .perde-sag-ac{animation:perdeSagAc .65s cubic-bezier(.6,0,.4,1) forwards}
+    .perde-icerik-goster{animation:perdeIcerik .4s .5s ease forwards}
+    .dogru-tik-cevre{animation:dogruTikCevre .5s ease forwards}
+    .dogru-tik-isaret{animation:dogruTikIsaret .35s .45s ease forwards}
+    .dogru-ripple{animation:dogruRipple .6s .5s ease-out forwards}
+    .lgs-ring{animation:lgsRing 4s linear infinite;transform-box:fill-box;transform-origin:center}
+    .or{font-family:'Orbitron',monospace}
+    .nb{border:1px solid rgba(224,64,251,.15);transition:border-color .2s,box-shadow .2s}
+    .nb:hover{border-color:rgba(224,64,251,.35);box-shadow:0 0 20px #E040FB22}
+    .bn{transition:all .18s ease;cursor:pointer}
+    .bn:hover:not([disabled]){filter:brightness(1.18);transform:translateY(-2px)}
+    .bn:active:not([disabled]){transform:translateY(0) scale(.98)}
+    .ch{transition:all .2s ease}
+    .ch:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,0,0,.5)}
+    .page-container{animation:pageIn .35s cubic-bezier(.34,1.2,.64,1) both}
+    .typing-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin:0 2px;animation:typing 1s ease-in-out infinite}
+    .typing-dot:nth-child(2){animation-delay:.2s}
+    .typing-dot:nth-child(3){animation-delay:.4s}
+    .nefes-kenarlik{position:relative;border-radius:12px;border:2px solid var(--krenk);background:var(--krenk-bg);animation:nefesAl 2.2s ease-in-out infinite}
+    input[type=number]::-webkit-inner-spin-button{opacity:1}
+  `;
+  document.head.appendChild(s);
+}
+
+// ── TEMEL BİLEŞENLER ──
+function Card({children,style,color,hover}){
+  const c=color||C.neon;
+  return(
+    <div className={"nb"+(hover?" ch":"")} style={{background:C.card,borderRadius:14,padding:16,borderColor:`${c}22`,position:"relative",overflow:"hidden",...style}}>
+      <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${c},transparent)`,opacity:.7}}/>
+      {children}
+    </div>
+  );
+}
+
+function DonenHalkaLogo({boyut=42}){
+  return(
+    <svg width={boyut} height={boyut} viewBox="0 0 64 64" style={{flexShrink:0,display:"block"}}>
+      <circle cx="32" cy="32" r="30" fill="#0D0818"/>
+      <circle cx="32" cy="32" r="30" fill="none" stroke="#00E5AA" strokeWidth="1.5" opacity="0.3"/>
+      <circle className="lgs-ring" cx="32" cy="32" r="30" fill="none" stroke="#00E5AA" strokeWidth="3.5" strokeDasharray="18 8" strokeLinecap="round"/>
+      <text x="32" y="37" textAnchor="middle" fontFamily="Orbitron,monospace" fontSize="15" fontWeight="900" fill="#00E5AA">LGS</text>
+    </svg>
+  );
+}
+
+function DonenHalkaLogoBuyuk({boyut=72}){
+  return(
+    <svg width={boyut} height={boyut} viewBox="0 0 120 120" style={{flexShrink:0,display:"block",filter:"drop-shadow(0 0 12px #00E5AA88)"}}>
+      <circle cx="60" cy="60" r="56" fill="#0D0818" opacity="0.95"/>
+      <circle cx="60" cy="60" r="56" fill="none" stroke="#00E5AA" strokeWidth="1" opacity="0.2"/>
+      <circle className="lgs-ring" cx="60" cy="60" r="56" fill="none" stroke="#00E5AA" strokeWidth="4" strokeDasharray="24 10" strokeLinecap="round"/>
+      <circle cx="60" cy="60" r="46" fill="none" stroke="#8B5CF6" strokeWidth="2.5" strokeDasharray="14 16" strokeLinecap="round" style={{animation:"lgsRing 6s linear infinite reverse"}}/>
+      <text x="60" y="54" textAnchor="middle" fontFamily="Orbitron,monospace" fontSize="26" fontWeight="900" fill="#00E5AA" letterSpacing="2">LGS</text>
+      <text x="60" y="76" textAnchor="middle" fontFamily="Orbitron,monospace" fontSize="15" fontWeight="700" fill="#00E5AA" letterSpacing="1.5">2027</text>
+    </svg>
+  );
+}
+
+function MaskotYuz({mood}){
+  const rc=mood==="happy"?"#FFD700":mood==="think"?"#FF9A3C":"#FF6B8A";
+  const bg=mood==="happy"?"#FFF8D6":mood==="think"?"#FFF0DC":"#FFE0E8";
+  return(
+    <svg viewBox="0 0 100 100" width="90" height="90" style={{filter:`drop-shadow(0 6px 18px ${rc}88)`}}>
+      <circle cx="50" cy="54" r="32" fill={bg} stroke={rc} strokeWidth="3"/>
+      <circle cx="20" cy="44" r="10" fill={bg} stroke={rc} strokeWidth="2.5"/>
+      <circle cx="80" cy="44" r="10" fill={bg} stroke={rc} strokeWidth="2.5"/>
+      {mood==="sad"?(
+        <>
+          <path d="M37,48 Q41,44 45,48" fill="none" stroke="#444" strokeWidth="2.2" strokeLinecap="round"/>
+          <path d="M55,48 Q59,44 63,48" fill="none" stroke="#444" strokeWidth="2.2" strokeLinecap="round"/>
+          <path d="M40,65 Q50,60 60,65" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round"/>
+        </>
+      ):mood==="think"?(
+        <>
+          <circle cx="40" cy="48" r="5" fill="#444"/><circle cx="60" cy="48" r="5" fill="#444"/>
+          <path d="M42,64 Q50,67 58,64" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round"/>
+        </>
+      ):(
+        <>
+          <path d="M37,47 Q41,52 45,47" fill="none" stroke="#444" strokeWidth="2.5" strokeLinecap="round"/>
+          <path d="M55,47 Q59,52 63,47" fill="none" stroke="#444" strokeWidth="2.5" strokeLinecap="round"/>
+          <path d="M38,62 Q50,72 62,62" fill="none" stroke="#FF6B8A" strokeWidth="2.5" strokeLinecap="round"/>
+        </>
+      )}
+      <rect x="30" y="20" width="40" height="6" rx="2" fill={rc} opacity="0.8"/>
+      <rect x="34" y="12" width="32" height="10" rx="3" fill={rc} opacity="0.9"/>
+    </svg>
+  );
+}
+
+function PageWrapper({title,emoji,color,onGeri,children}){
+  return(
+    <div className="page-container">
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,padding:"12px 0 10px",borderBottom:`1px solid ${color}33`}}>
+        <button onClick={onGeri} className="bn geri-btn"
+          style={{display:"flex",alignItems:"center",gap:8,padding:"11px 18px",background:`${color}18`,border:`2px solid ${color}`,borderRadius:12,color:color,fontFamily:"Orbitron,monospace",fontSize:11,fontWeight:700,cursor:"pointer",flexShrink:0}}>
+          <span className="geri-ok">{"<"}</span> ANA SAYFA
+        </button>
+        <div style={{flex:1,display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:20}}>{emoji}</span>
+          <h2 className="or" style={{fontSize:12,color:color,letterSpacing:".1em",margin:0}}>{title}</h2>
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── WRONG OVERLAY ──
+function WrongOverlay({soru,dogru,aciklama,onKapat}){
+  const [fase,setFase]=useState("sad");
+  const [perdeAcik,setPerdeAcik]=useState(false);
+  useEffect(()=>{
+    const t0=setTimeout(()=>setPerdeAcik(true),130);
+    const t1=setTimeout(()=>setFase("think"),1500);
+    const t2=setTimeout(()=>setFase("happy"),2800);
+    return()=>{clearTimeout(t0);clearTimeout(t1);clearTimeout(t2);};
+  },[]);
+  const rc=fase==="happy"?C.green:fase==="think"?C.orange:C.red;
+  return(
+    <div onClick={onKapat} style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(13,8,24,.85)",backdropFilter:"blur(4px)",cursor:"pointer"}}>
+      <div onClick={e=>e.stopPropagation()} style={{width:"min(90vw,370px)",minHeight:300,borderRadius:24,background:"#18102E",border:`2px solid ${rc}`,position:"relative",overflow:"hidden",boxShadow:`0 0 40px ${rc}33`}}>
+        <div className={perdeAcik?"perde-sol-ac":""} style={{position:"absolute",top:0,bottom:0,left:0,width:"51%",background:"linear-gradient(135deg,#2A1B0D,#18102E)",zIndex:6,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:30,opacity:.35}}>◀</span></div>
+        <div className={perdeAcik?"perde-sag-ac":""} style={{position:"absolute",top:0,bottom:0,right:0,width:"51%",background:"linear-gradient(135deg,#2A1B0D,#18102E)",zIndex:6,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:30,opacity:.35}}>▶</span></div>
+        <div className={perdeAcik?"perde-icerik-goster":""} style={{padding:"26px 22px 20px",textAlign:"center",position:"relative",zIndex:2,opacity:perdeAcik?undefined:0}}>
+          <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:`linear-gradient(90deg,transparent,${rc},transparent)`}}/>
+          <div style={{display:"flex",justifyContent:"center",marginBottom:10}}><MaskotYuz mood={fase}/></div>
+          <div style={{display:"inline-block",padding:"3px 14px",borderRadius:20,background:`${rc}18`,border:`1px solid ${rc}55`,marginBottom:10}}>
+            <span className="or" style={{fontSize:12,fontWeight:900,color:rc}}>{fase==="sad"?"YANLIŞ!":fase==="think"?"DÜŞÜNELİM...":"ANLADIM!"}</span>
+          </div>
+          <div style={{padding:"12px 15px",borderRadius:13,background:`${C.green}07`,border:`1px solid ${C.green}44`,marginBottom:12,textAlign:"left"}}>
+            <div style={{fontSize:9,fontFamily:"Inter",fontWeight:800,color:C.green,letterSpacing:".15em",marginBottom:6}}>DOĞRU CEVAP</div>
+            <div className="or" style={{fontSize:20,fontWeight:900,color:C.green,marginBottom:6}}>{dogru}</div>
+            <p style={{fontSize:12,fontFamily:"Inter",color:C.text,lineHeight:1.85}}>{aciklama}</p>
+          </div>
+          <button onClick={onKapat} className="bn" style={{width:"100%",padding:"11px 0",background:`${rc}18`,border:`1px solid ${rc}66`,borderRadius:12,color:rc,fontFamily:"Orbitron,monospace",fontSize:11,fontWeight:800,cursor:"pointer"}}>ANLADIM →</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CorrectOverlay({aciklama,onKapat}){
+  const [oynat,setOynat]=useState(false);
+  useEffect(()=>{const t=setTimeout(()=>setOynat(true),60);return()=>clearTimeout(t);},[]);
+  return(
+    <div onClick={onKapat} style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(13,8,24,.85)",backdropFilter:"blur(4px)",cursor:"pointer"}}>
+      <div onClick={e=>e.stopPropagation()} style={{width:"min(90vw,370px)",borderRadius:24,background:"#18102E",border:`2px solid ${C.green}`,padding:"26px 22px 20px",textAlign:"center",position:"relative",overflow:"hidden",boxShadow:`0 0 40px ${C.green}33`}}>
+        <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:`linear-gradient(90deg,transparent,${C.green},transparent)`}}/>
+        <div className={oynat?"dogru-ripple":""} style={{position:"absolute",top:48,left:"50%",width:90,height:90,borderRadius:"50%",border:`2px solid ${C.green}`,transform:"translateX(-50%)",opacity:0,zIndex:1}}/>
+        <svg viewBox="0 0 100 100" style={{width:90,height:90,display:"block",margin:"0 auto 10px",position:"relative",zIndex:2}}>
+          <circle cx="50" cy="50" r="35" fill="none" stroke={C.green} strokeWidth="4" strokeDasharray="220" strokeDashoffset="220" className={oynat?"dogru-tik-cevre":""}/>
+          <path d="M32,52 L45,65 L70,36" fill="none" stroke={C.green} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="60" strokeDashoffset="60" className={oynat?"dogru-tik-isaret":""}/>
+        </svg>
+        <div style={{display:"inline-block",padding:"3px 14px",borderRadius:20,background:`${C.green}18`,border:`1px solid ${C.green}55`,marginBottom:10}}>
+          <span className="or" style={{fontSize:12,fontWeight:900,color:C.green}}>DOĞRU! HARİKASIN!</span>
+        </div>
+        <div style={{padding:"12px 15px",borderRadius:13,background:`${C.green}07`,border:`1px solid ${C.green}44`,marginBottom:12,textAlign:"left"}}>
+          <div style={{fontSize:9,fontFamily:"Inter",fontWeight:800,color:C.green,letterSpacing:".15em",marginBottom:6}}>AÇIKLAMA</div>
+          <p style={{fontSize:12,fontFamily:"Inter",color:C.text,lineHeight:1.85}}>{aciklama}</p>
+        </div>
+        <button onClick={onKapat} className="bn" style={{width:"100%",padding:"11px 0",background:`${C.green}18`,border:`1px solid ${C.green}66`,borderRadius:12,color:C.green,fontFamily:"Orbitron,monospace",fontSize:11,fontWeight:800,cursor:"pointer"}}>ANLADIM →</button>
+      </div>
+    </div>
+  );
+}
+
+// ── KILAVUZ ÖĞRETMEN MODALİ ──
+const KILAVUZ_SISTEM = `Sen Pursaklar İmam Hatip Ortaokulu'nun efsane hocası "Piho Hoca"sın. Sokratik yöntemle öğretirsin — asla doğrudan cevap vermezsin. Her mesajda en fazla 1-2 soru sor. Türkçe yaz, sıcak ve motive edici ol. Öğrenci doğruya ulaşınca coşkuyla kutla. JSON veya kod yazma.`;
+
+function KilavuzModal({soru,dersRenk,dersEm,onKapat}){
+  const [mesajlar,setMesajlar]=useState([]);
+  const [input,setInput]=useState("");
+  const [yukleniyor,setYukleniyor]=useState(false);
+  const [cozuldu,setCozuldu]=useState(false);
+  const sonRef=useRef(null);
+
+  useEffect(()=>{
+    pihoTTSRastgele("kilavuz");
+    (async()=>{
+      setYukleniyor(true);
+      try{
+        const r=await callClaude(
+          `Öğrenci yanlış yaptı.\nSoru: ${soru.soru}\nA)${soru.A} B)${soru.B} C)${soru.C} D)${soru.D}\nDoğru: ${soru.dogru}) ${soru[soru.dogru]}\nKonu: ${soru.konu}\nCevabı söylemeden ilk yönlendirici soruyu sor.`,
+          KILAVUZ_SISTEM,400
+        );
+        setMesajlar([{rol:"koc",metin:r}]);
+      }catch{
+        setMesajlar([{rol:"koc",metin:"Merhaba! Bu soruyu birlikte çözelim. Sana şunu sormak istiyorum: Bu soruda bize ne buldurmak istiyor?"}]);
+      }
+      setYukleniyor(false);
+    })();
+  },[]);
+
+  useEffect(()=>{if(sonRef.current)sonRef.current.scrollIntoView({behavior:"smooth"});},[mesajlar]);
+
+  async function gonder(){
+    if(!input.trim()||yukleniyor||cozuldu)return;
+    const yeni=[...mesajlar,{rol:"ogrenci",metin:input.trim()}];
+    setMesajlar(yeni);setInput("");setYukleniyor(true);
+    try{
+      const gecmis=yeni.map(m=>(m.rol==="koc"?"Kılavuz: ":"Öğrenci: ")+m.metin).join("\n\n");
+      const r=await callClaude(
+        `Soru:${soru.soru}\nDoğru:${soru.dogru})${soru[soru.dogru]}\nAçıklama:${soru.aciklama}\n\nKonuşma:\n${gecmis}\n\nSokratik yöntemle yanıt ver.`,
+        KILAVUZ_SISTEM,500
+      );
+      const kutlama=r.includes("Harika")||r.includes("Tebrik")||r.includes("Doğru")||r.includes("Evet")||r.includes("Bravo");
+      const dogru_mu=input.toLowerCase().includes(soru.dogru.toLowerCase());
+      if(dogru_mu&&kutlama) setCozuldu(true);
+      pihoTTS(r.slice(0,120));
+      setMesajlar(p=>[...p,{rol:"koc",metin:r}]);
+    }catch{
+      setMesajlar(p=>[...p,{rol:"koc",metin:"Düşüncen mantıklı! Peki bu sorunun temel kavramı ne sence?"}]);
+    }
+    setYukleniyor(false);
+  }
+
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(13,8,24,.92)",backdropFilter:"blur(6px)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+      <div style={{width:"min(100vw,680px)",height:"92vh",background:C.bg2,borderRadius:"24px 24px 0 0",border:`2px solid ${dersRenk}55`,borderBottom:"none",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <div style={{padding:"16px 18px 12px",borderBottom:`1px solid ${dersRenk}22`,background:C.bg,flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <div style={{width:46,height:46,borderRadius:14,background:`${dersRenk}22`,border:`2px solid ${dersRenk}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0}}>{KILAVUZ_EM}</div>
+            <div style={{flex:1}}>
+              <div className="or" style={{fontSize:13,fontWeight:900,color:dersRenk}}>{KILAVUZ_AD}</div>
+              <div style={{fontSize:10,fontFamily:"Inter",color:C.text2}}>{dersEm} {soru.konu} · Sokratik Rehberlik</div>
+            </div>
+            {cozuldu&&<div style={{padding:"4px 12px",borderRadius:20,background:`${C.green}22`,border:`1px solid ${C.green}55`}}><span style={{fontSize:11,fontFamily:"Inter",fontWeight:700,color:C.green}}>✅ Çözüldü!</span></div>}
+            <button onClick={onKapat} className="bn" style={{width:32,height:32,borderRadius:9,background:C.border,border:"none",color:C.text2,cursor:"pointer",fontSize:16}}>✕</button>
+          </div>
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:"16px 18px",display:"flex",flexDirection:"column",gap:12}}>
+          {mesajlar.map((m,i)=>{
+            const isKoc=m.rol==="koc";
+            return(
+              <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",flexDirection:isKoc?"row":"row-reverse"}}>
+                {isKoc&&<div style={{width:32,height:32,borderRadius:10,background:`${dersRenk}22`,border:`1px solid ${dersRenk}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{KILAVUZ_EM}</div>}
+                <div style={{maxWidth:"78%",padding:"10px 14px",borderRadius:isKoc?"4px 14px 14px 14px":"14px 4px 14px 14px",background:isKoc?C.card:`${dersRenk}18`,border:`1px solid ${isKoc?C.border:dersRenk+"44"}`}}>
+                  <p style={{fontSize:13,fontFamily:"Inter",color:C.text,lineHeight:1.75,whiteSpace:"pre-wrap"}}>{m.metin}</p>
+                </div>
+                {!isKoc&&<div style={{width:32,height:32,borderRadius:10,background:`${dersRenk}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>🧑‍🎓</div>}
+              </div>
+            );
+          })}
+          {yukleniyor&&(
+            <div style={{display:"flex",gap:10}}>
+              <div style={{width:32,height:32,borderRadius:10,background:`${dersRenk}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>{KILAVUZ_EM}</div>
+              <div style={{padding:"12px 16px",borderRadius:"4px 14px 14px 14px",background:C.card,border:`1px solid ${C.border}`}}>
+                <div style={{display:"flex",gap:4}}>{[dersRenk,C.purple,C.neon].map((c,i)=><span key={i} className="typing-dot" style={{color:c,animationDelay:`${i*.2}s`}}/>)}</div>
+              </div>
+            </div>
+          )}
+          {cozuldu&&(
+            <div style={{textAlign:"center",padding:"16px",borderRadius:14,background:`${C.green}0D`,border:`1px solid ${C.green}44`}}>
+              <div style={{fontSize:36,marginBottom:8}}>🏆</div>
+              <div className="or" style={{fontSize:14,color:C.green,fontWeight:900}}>Çözüm Tamamlandı!</div>
+            </div>
+          )}
+          <div ref={sonRef}/>
+        </div>
+        <div style={{padding:"12px 18px 16px",borderTop:`1px solid ${C.border}`,background:C.bg,flexShrink:0}}>
+          {cozuldu?(
+            <button onClick={onKapat} className="bn" style={{width:"100%",padding:"13px",background:`linear-gradient(135deg,${C.green},#00A870)`,border:"none",borderRadius:12,color:"#000",fontFamily:"Orbitron,monospace",fontSize:12,fontWeight:700,cursor:"pointer"}}>Soru Çözüldü — Kapat 🎉</button>
+          ):(
+            <div style={{display:"flex",gap:10,alignItems:"flex-end"}}>
+              <textarea value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();gonder();}}}
+                placeholder="Cevabını yaz... (Enter = gönder)" rows={2}
+                style={{flex:1,background:C.bg2,border:`1px solid ${dersRenk}44`,borderRadius:12,padding:"10px 14px",color:C.text,fontFamily:"Inter",fontSize:13,outline:"none",resize:"none",lineHeight:1.5}}/>
+              <button onClick={gonder} disabled={!input.trim()||yukleniyor} className="bn"
+                style={{width:44,height:44,borderRadius:12,background:input.trim()?`linear-gradient(135deg,${dersRenk},${C.neonD})`:C.border,border:"none",color:input.trim()?"#000":C.text3,cursor:input.trim()?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>
+                ➤
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── SORU KARTI ──
+const SORU_RENKLER={A:C.neon,B:C.purple,C:C.orange,D:C.pink};
+const ZORLUK_RENK={kolay:C.green,orta:C.yellow,zor:C.red};
+
+function SoruKarti({soru,ders,gecmisUzunluk,onCevap,onSonraki}){
+  const [cevap,setCevap]=useState(null);
+  const [goster,setGoster]=useState(false);
+  const [wrongOL,setWrongOL]=useState(false);
+  const [correctOL,setCorrectOL]=useState(false);
+  const [kilavuz,setKilavuz]=useState(false);
+
+  function sec(h){
+    if(goster)return;
+    setCevap(h);
+    const dogru=h===soru.dogru;
+    sesiCal(dogru?"dogru":"yanlis");
+    setTimeout(()=>{setGoster(true);dogru?setCorrectOL(true):setWrongOL(true);},220);
+    if(onCevap)onCevap(dogru);
+  }
+
+  return(
+    <>
+      <div style={{animation:"soruGel .5s cubic-bezier(.34,1.56,.64,1) both",marginBottom:13}}>
+        <div style={{padding:"10px 14px 0",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            <span style={{fontSize:9,padding:"3px 10px",borderRadius:20,background:`${ders.renk}18`,border:`1px solid ${ders.renk}44`,color:ders.renk,fontFamily:"Inter",fontWeight:700}}>{ders.em} {soru.konu}</span>
+            <span style={{fontSize:9,padding:"3px 10px",borderRadius:20,background:`${(ZORLUK_RENK[soru.zorluk]||C.text3)}18`,color:ZORLUK_RENK[soru.zorluk]||C.text3,fontFamily:"Inter",fontWeight:700}}>{soru.zorluk==="kolay"?"🟢":soru.zorluk==="orta"?"🟡":"🔴"} {soru.zorluk}</span>
+          </div>
+          <div className="or" style={{fontSize:11,color:C.text3}}>#{gecmisUzunluk}</div>
+        </div>
+        <div style={{padding:"0 14px 14px"}}>
+          <div style={{padding:"14px",borderRadius:12,background:C.bg2,border:`1px solid ${ders.renk}22`,marginBottom:12,position:"relative",overflow:"hidden"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,${ders.renk},${C.purple},transparent)`,opacity:.6}}/>
+            <p style={{fontSize:13,fontFamily:"Inter",color:C.text,lineHeight:1.9,whiteSpace:"pre-line"}}>{soru.soru}</p>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
+            {["A","B","C","D"].map((h,idx)=>{
+              const m=soru[h];if(!m)return null;
+              const isDog=soru.dogru===h,isSec=cevap===h,rc=SORU_RENKLER[h];
+              let bg="transparent",bc=C.border,tc=C.text;
+              if(goster){if(isDog){bg=`${C.green}18`;bc=C.green;tc=C.green;}else if(isSec){bg=`${C.red}11`;bc=C.red;tc=C.red;}}
+              else if(isSec){bg=`${rc}15`;bc=rc;}
+              return(
+                <button key={h} onClick={()=>sec(h)}
+                  style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:11,background:bg,border:`1px solid ${bc}`,cursor:goster?"default":"pointer",textAlign:"left",width:"100%",animation:`sikGel .35s ${idx*.07}s ease both`,transition:"all .2s"}}>
+                  <div style={{width:30,height:30,borderRadius:8,background:`${rc}18`,border:`1.5px solid ${rc}55`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <span className="or" style={{fontSize:12,fontWeight:700,color:rc}}>{h}</span>
+                  </div>
+                  <span style={{fontFamily:"Inter",fontSize:12,color:tc,flex:1,lineHeight:1.5}}>{m}</span>
+                  {goster&&isDog&&<span style={{fontSize:16}}>✅</span>}
+                  {goster&&isSec&&!isDog&&<span style={{fontSize:16}}>❌</span>}
+                </button>
+              );
+            })}
+          </div>
+          {goster&&cevap!==soru.dogru&&(
+            <button onClick={()=>setKilavuz(true)} className="bn"
+              style={{width:"100%",padding:"13px",background:`linear-gradient(135deg,${ders.renk},${C.purple})`,border:"none",borderRadius:10,color:"#fff",fontFamily:"Orbitron,monospace",fontSize:11,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginBottom:8}}>
+              <span style={{fontSize:20}}>{KILAVUZ_EM}</span> {KILAVUZ_AD} İLE ÖĞRENELİM
+            </button>
+          )}
+          {goster&&(
+            <button onClick={onSonraki} className="bn"
+              style={{width:"100%",padding:"12px",background:`${ders.renk}18`,border:`1px solid ${ders.renk}55`,borderRadius:10,color:ders.renk,fontFamily:"Orbitron,monospace",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+              {cevap===soru.dogru?"Sonraki Soru ⚡":"Geç →"}
+            </button>
+          )}
+        </div>
+      </div>
+      {wrongOL&&<WrongOverlay soru={soru.soru} dogru={soru.dogru+") "+soru[soru.dogru]} aciklama={soru.aciklama} onKapat={()=>setWrongOL(false)}/>}
+      {correctOL&&<CorrectOverlay aciklama={soru.aciklama} onKapat={()=>setCorrectOL(false)}/>}
+      {kilavuz&&<KilavuzModal soru={soru} dersRenk={ders.renk} dersEm={ders.em} onKapat={()=>setKilavuz(false)}/>}
+    </>
+  );
+}
+
+// ── SORU ÜRETİCİ ──
+const MEB_SISTEM = `Sen Türkiye MEB'in resmi LGS soru yazma komisyonundasın. SADECE geçerli düz JSON döndür. Markdown veya backtick YAZMA.`;
+
+function SoruUretici({onGeri}){
+  const [secDers,setSecDers]=useState("mat");
+  const [secKonu,setSecKonu]=useState("");
+  const [zorluk,setZorluk]=useState("orta");
+  const [uretilen,setUretilen]=useState(null);
+  const [yukleniyor,setYukleniyor]=useState(false);
+  const [skor,setSkor]=useState({dogru:0,yanlis:0});
+  const ders=DERSLER.find(d=>d.id===secDers);
+  const konular=KONULAR[secDers]||[];
+
+  async function soruUret(){
+    setYukleniyor(true);setUretilen(null);
+    const konu=secKonu||konular[Math.floor(Math.random()*konular.length)];
+    try{
+      const r=await callClaude(
+        `Ders:${ders.ad}\nKonu:${konu}\nZorluk:${zorluk}\nJSON formatında tek LGS sorusu:\n{"soru":"...","A":"...","B":"...","C":"...","D":"...","dogru":"A/B/C/D","aciklama":"...","konu":"${konu}","zorluk":"${zorluk}"}`,
+        MEB_SISTEM,800
+      );
+      const clean=r.replace(/```json\s*/gi,"").replace(/```\s*/g,"").trim();
+      setUretilen(JSON.parse(clean.slice(clean.indexOf("{"),clean.lastIndexOf("}")+1)));
+    }catch{
+      setUretilen({soru:"Kare kökü 9 olan sayı hangisidir?",A:"2",B:"3",C:"4",D:"6",dogru:"B",aciklama:"√9 = 3",konu,zorluk,yerel:true});
+    }
+    setYukleniyor(false);
+  }
+
+  return(
+    <PageWrapper title="SORU ÜRETİCİ" emoji="⚡" color={C.yellow} onGeri={onGeri}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
+        {[{l:"SORU",v:skor.dogru+skor.yanlis,c:C.yellow,e:"⚡"},{l:"DOĞRU",v:skor.dogru,c:C.green,e:"✅"},{l:"YANLIŞ",v:skor.yanlis,c:C.red,e:"❌"}].map(item=>(
+          <div key={item.l} style={{padding:"10px 8px",background:C.card,borderRadius:11,border:`1px solid ${item.c}33`,textAlign:"center"}}>
+            <div style={{fontSize:15,marginBottom:3}}>{item.e}</div>
+            <div className="or" style={{fontSize:18,fontWeight:900,color:item.c,lineHeight:1}}>{item.v}</div>
+            <div style={{fontSize:8,fontFamily:"Inter",color:C.text3,marginTop:3}}>{item.l}</div>
+          </div>
+        ))}
+      </div>
+      <Card color={C.yellow} style={{marginBottom:13}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,marginBottom:14}}>
+          {DERSLER.map(d=>(
+            <button key={d.id} onClick={()=>{setSecDers(d.id);setSecKonu("");setUretilen(null);}}
+              style={{padding:"12px 6px",borderRadius:12,border:`2px solid ${secDers===d.id?d.renk:C.border}`,background:secDers===d.id?`${d.renk}15`:C.bg2,cursor:"pointer",textAlign:"center"}}>
+              <div style={{fontSize:24,marginBottom:4}}>{d.em}</div>
+              <div className="or" style={{fontSize:9,fontWeight:700,color:secDers===d.id?d.renk:C.text2}}>{d.ad.split(" ")[0].toUpperCase()}</div>
+            </button>
+          ))}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6,marginBottom:12}}>
+          <button onClick={()=>setSecKonu("")} style={{gridColumn:"1/-1",padding:"10px",borderRadius:10,border:`2px solid ${!secKonu?C.yellow:C.border}`,background:!secKonu?`${C.yellow}15`:C.bg2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            <span>🎲</span><span className="or" style={{fontSize:10,color:!secKonu?C.yellow:C.text2}}>RASTGELE</span>
+          </button>
+          {konular.map(k=>(
+            <button key={k} onClick={()=>setSecKonu(k)} style={{padding:"8px",borderRadius:9,border:`1.5px solid ${secKonu===k?ders.renk:C.border}`,background:secKonu===k?`${ders.renk}15`:C.bg2,cursor:"pointer",color:secKonu===k?ders.renk:C.text2,fontFamily:"Inter",fontSize:10}}>{k}</button>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:7,marginBottom:12}}>
+          {[{z:"kolay",c:C.green},{z:"orta",c:C.yellow},{z:"zor",c:C.red}].map(item=>(
+            <button key={item.z} onClick={()=>setZorluk(item.z)} style={{flex:1,padding:"9px",borderRadius:10,border:`1.5px solid ${zorluk===item.z?item.c:C.border}`,background:zorluk===item.z?`${item.c}15`:C.bg2,cursor:"pointer",color:zorluk===item.z?item.c:C.text2,fontFamily:"Orbitron,monospace",fontSize:9,fontWeight:700}}>{item.z.toUpperCase()}</button>
+          ))}
+        </div>
+        <button onClick={soruUret} disabled={yukleniyor} className="bn"
+          style={{width:"100%",padding:"13px",background:C.yellow,border:"none",borderRadius:11,color:"#000",fontFamily:"Orbitron,monospace",fontSize:12,fontWeight:700,cursor:"pointer",opacity:yukleniyor?.7:1}}>
+          {yukleniyor?"Üretiliyor...":"YENİ SORU ÜRET"}
+        </button>
+      </Card>
+      {yukleniyor&&(
+        <div style={{textAlign:"center",padding:"28px",background:C.card,borderRadius:14,marginBottom:13}}>
+          <div style={{display:"flex",justifyContent:"center",gap:4,marginBottom:8}}>{[C.yellow,C.neon,C.purple].map((c,i)=><span key={i} className="typing-dot" style={{color:c,animationDelay:`${i*.2}s`}}/>)}</div>
+          <div style={{fontSize:11,fontFamily:"Inter",color:C.text2}}>MEB formatında soru hazırlanıyor...</div>
+        </div>
+      )}
+      {uretilen&&!yukleniyor&&(
+        <Card color={ders.renk} style={{padding:0}}>
+          <SoruKarti soru={uretilen} ders={ders} gecmisUzunluk={skor.dogru+skor.yanlis+1}
+            onCevap={d=>setSkor(p=>d?{...p,dogru:p.dogru+1}:{...p,yanlis:p.yanlis+1})}
+            onSonraki={soruUret}/>
+        </Card>
+      )}
+    </PageWrapper>
+  );
+}
+
+// ── PUAN HESAPLAYICI ──
+function PuanHesaplayici({onGeri}){
+  const [vals,setVals]=useState(()=>{const o={};DERSLER.forEach(d=>{o[d.id]={dogru:"",yanlis:""};});return o;});
+  function setV(id,k,v){const num=parseFloat(v);const d=DERSLER.find(x=>x.id===id);setVals(p=>({...p,[id]:{...p[id],[k]:isNaN(num)?"":Math.max(0,Math.min(num,d.soru))}}));}
+
+  const dersNetler=useMemo(()=>{const r={};DERSLER.forEach(d=>{const dog=parseFloat(vals[d.id].dogru)||0,yan=parseFloat(vals[d.id].yanlis)||0;r[d.id]={dogru:dog,yanlis:yan,net:Math.round((dog-yan/3)*100)/100};});return r;},[vals]);
+  const agirlikli=useMemo(()=>DERSLER.reduce((a,d)=>a+dersNetler[d.id].net*(d.katsayi||1),0),[dersNetler]);
+  const puan=useMemo(()=>Math.max(200,Math.min(500,Math.round((200+agirlikli)*100)/100)),[agirlikli]);
+  const topNet=useMemo(()=>Math.round(DERSLER.reduce((a,d)=>a+dersNetler[d.id].net,0)*100)/100,[dersNetler]);
+  const puanRengi=puan>=470?C.green:puan>=440?C.neon:puan>=410?C.yellow:C.orange;
+
+  return(
+    <PageWrapper title="PUAN HESAPLAYICI" emoji="🧮" color={C.neon} onGeri={onGeri}>
+      <div style={{padding:"10px 14px",borderRadius:11,background:`${C.neon}08`,border:`1px solid ${C.neon}33`,marginBottom:14}}>
+        <div className="or" style={{fontSize:10,color:C.neon,marginBottom:4}}>📐 MEB 2026 FORMÜLÜ</div>
+        <div style={{fontSize:11,fontFamily:"Inter",color:C.text2}}>Net = Doğru − (Yanlış ÷ 3) &nbsp;|&nbsp; Puan = 200 + Σ(Net × Katsayı)<br/>Türkçe/Mat/Fen → ×4 &nbsp;|&nbsp; İnkılap/Din/İng → ×1</div>
+      </div>
+      <Card color={C.neon} style={{marginBottom:13}}>
+        {DERSLER.map(d=>{
+          const net=dersNetler[d.id].net;
+          const dolu=vals[d.id].dogru!==""||vals[d.id].yanlis!=="";
+          return(
+            <div key={d.id} style={{padding:"11px 13px",borderRadius:12,background:dolu?`${d.renk}0D`:C.bg2,border:`1.5px solid ${dolu?d.renk:C.border}`,marginBottom:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                <span style={{fontSize:18}}>{d.em}</span>
+                <div style={{flex:1}}><div className="or" style={{fontSize:10,color:d.renk}}>{d.ad}</div><div style={{fontSize:9,fontFamily:"Inter",color:C.text3}}>{d.soru} soru × {d.katsayi} katsayı</div></div>
+                <div className="or" style={{fontSize:18,fontWeight:900,color:dolu?(net>=0?d.renk:C.red):C.text3}}>{dolu?net.toFixed(2):"—"}</div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                {[{k:"dogru",l:"DOĞRU",c:C.green},{k:"yanlis",l:"YANLIŞ",c:C.red}].map(item=>(
+                  <div key={item.k}>
+                    <div style={{fontSize:8,fontFamily:"Inter",fontWeight:700,color:item.c,marginBottom:4}}>{item.l}</div>
+                    <input type="number" min="0" max={d.soru} value={vals[d.id][item.k]} onChange={e=>setV(d.id,item.k,e.target.value)} placeholder="0"
+                      style={{width:"100%",background:C.bg,border:`1.5px solid ${item.c}44`,borderRadius:8,padding:"8px",color:item.c,fontFamily:"Orbitron,monospace",fontSize:18,fontWeight:700,textAlign:"center",outline:"none"}}/>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </Card>
+      <div style={{padding:"22px 18px",borderRadius:18,background:`${puanRengi}12`,border:`2px solid ${puanRengi}`,textAlign:"center",position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:`linear-gradient(90deg,transparent,${puanRengi},transparent)`}}/>
+        <div style={{fontSize:9,fontFamily:"Inter",fontWeight:800,color:puanRengi,letterSpacing:".2em",marginBottom:8}}>LGS PUANINIZ</div>
+        <div className="or" style={{fontSize:54,fontWeight:900,color:puanRengi,lineHeight:1,marginBottom:4}}>{puan.toFixed(2)}</div>
+        <div style={{fontSize:11,fontFamily:"Inter",color:C.text2,marginBottom:12}}>200 (taban) + {agirlikli.toFixed(2)} (ağırlıklı)</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <div style={{padding:"10px",background:C.bg2,borderRadius:10,border:`1px solid ${C.neon}33`}}>
+            <div className="or" style={{fontSize:16,fontWeight:900,color:C.neon}}>{topNet.toFixed(1)}</div>
+            <div style={{fontSize:9,fontFamily:"Inter",color:C.text3}}>TOPLAM NET</div>
+          </div>
+          <div style={{padding:"10px",background:C.bg2,borderRadius:10,border:`1px solid ${C.yellow}33`}}>
+            <div className="or" style={{fontSize:13,fontWeight:900,color:C.yellow}}>{puan>=480?"%1":puan>=460?"%3":puan>=440?"%5":puan>=420?"%9":puan>=400?"%14":puan>=380?"%20":"%30+"}</div>
+            <div style={{fontSize:9,fontFamily:"Inter",color:C.text3}}>TAHMİNİ YÜZDELİK</div>
+          </div>
+        </div>
+      </div>
+    </PageWrapper>
+  );
+}
+
+// ── HEDEF LİSE (özet) ──
+const HEDEFLER_OZET=[
+  {ad:"Ankara Fen Lisesi",puan:494.51,tur:"Fen",ilce:"Çankaya",renk:C.neon},
+  {ad:"Ankara Pursaklar Fen Lisesi ⭐",puan:489.02,tur:"Fen",ilce:"Pursaklar",renk:C.neon},
+  {ad:"Atatürk Anadolu Lisesi",puan:481.73,tur:"Anadolu",ilce:"Yenimahalle",renk:C.purple},
+  {ad:"Pursaklar Ayyıldız Anadolu Lisesi ⭐",puan:416.25,tur:"Anadolu",ilce:"Pursaklar",renk:C.purple},
+  {ad:"Tevfik İleri AİHL",puan:448.01,tur:"İmam Hatip",ilce:"Yenimahalle",renk:C.yellow},
+  {ad:"Pursaklar AİHL ⭐",puan:345.09,tur:"İmam Hatip",ilce:"Pursaklar",renk:C.yellow},
+  {ad:"Mamak Fen Lisesi",puan:445.09,tur:"Fen",ilce:"Mamak",renk:C.neon},
+  {ad:"Gazi Anadolu Lisesi",puan:462.45,tur:"Anadolu",ilce:"Çankaya",renk:C.purple},
+];
+
+function Hedef({onGeri}){
+  const [puan,setPuan]=useState(400);
+  const uygun=HEDEFLER_OZET.filter(h=>puan>=h.puan).sort((a,b)=>b.puan-a.puan);
+  const yakin=HEDEFLER_OZET.filter(h=>h.puan>puan&&h.puan-puan<=12).sort((a,b)=>a.puan-b.puan);
+  const turRenk={"Fen":C.neon,"Anadolu":C.purple,"İmam Hatip":C.yellow};
+  return(
+    <PageWrapper title="HEDEF LİSE" emoji="🎯" color={C.orange} onGeri={onGeri}>
+      <Card color={C.neon} style={{marginBottom:14}}>
+        <div style={{textAlign:"center",marginBottom:8}}>
+          <div className="or" style={{fontSize:32,fontWeight:900,color:C.neon}}>{puan.toFixed(0)}</div>
+          <div style={{fontSize:9,fontFamily:"Inter",color:C.text3}}>puan</div>
+        </div>
+        <input type="range" min="200" max="500" step="1" value={puan} onChange={e=>setPuan(Number(e.target.value))} style={{width:"100%",accentColor:C.neon,cursor:"pointer"}}/>
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:9,fontFamily:"Inter",color:C.text3,marginTop:4}}><span>200</span><span>500</span></div>
+      </Card>
+      {yakin.length>0&&(
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:9,fontFamily:"Inter",fontWeight:800,color:C.yellow,letterSpacing:".15em",marginBottom:8}}>⚡ NEREDEYSE — {yakin.length} okul</div>
+          {yakin.map((h,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 13px",borderRadius:10,background:`${C.yellow}09`,border:`1.5px solid ${C.yellow}55`,marginBottom:5}}>
+              <div style={{flex:1}}><div style={{fontSize:11,fontFamily:"Inter",fontWeight:600,color:C.text}}>{h.ad}</div><div style={{fontSize:9,fontFamily:"Inter",color:C.text3}}>{h.ilce} · {h.tur}</div></div>
+              <div style={{textAlign:"right"}}><div className="or" style={{fontSize:11,color:turRenk[h.tur]||C.neon}}>{h.puan}</div><div style={{fontSize:9,color:C.yellow}}>+{(h.puan-puan).toFixed(0)}</div></div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{fontSize:9,fontFamily:"Inter",fontWeight:800,color:C.green,letterSpacing:".15em",marginBottom:8}}>✅ ULAŞILABİLİR — {uygun.length} okul</div>
+      {uygun.map((h,i)=>(
+        <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 13px",borderRadius:10,background:`${C.green}07`,border:`1px solid ${C.green}22`,marginBottom:5}}>
+          <div style={{flex:1}}><div style={{fontSize:11,fontFamily:"Inter",fontWeight:600,color:C.text}}>{h.ad}</div><div style={{fontSize:9,fontFamily:"Inter",color:C.text3}}>{h.ilce} · {h.tur}</div></div>
+          <div className="or" style={{fontSize:11,color:turRenk[h.tur]||C.neon}}>{h.puan}</div>
+        </div>
+      ))}
+      {uygun.length===0&&<div style={{textAlign:"center",padding:"30px",color:C.text3,fontFamily:"Inter"}}>Puanı artır, liseleri gör!</div>}
+    </PageWrapper>
+  );
+}
+
+// ── ANA SAYFA ──
+const MODULLER=[
+  {id:"hesaplayici",em:"🧮",ad:"PUAN HESAPLAYICI",renk:C.neon,aciklama:"MEB 2026 formülüyle puan hesapla"},
+  {id:"uretici",em:"⚡",ad:"SORU ÜRETİCİ",renk:C.yellow,aciklama:"AI ile özgün LGS sorusu çöz"},
+  {id:"hedef",em:"🎯",ad:"HEDEF LİSE",renk:C.orange,aciklama:"Puanına göre Ankara liseleri"},
+];
+
+function AnaSayfa({onSekme}){
+  return(
+    <div className="page-container">
+      <div style={{overflow:"hidden",borderRadius:8,border:`1px solid ${C.green}33`,background:`${C.green}08`,padding:"6px 10px",marginBottom:14}}>
+        <span style={{display:"inline-block",whiteSpace:"nowrap",animation:"marquee 18s linear infinite",color:C.green,fontSize:11,fontFamily:"Inter",fontWeight:700}}>
+          ✦ PURSAKLAR İMAM HATİP ORTAOKULU LGS 2027 HEDEF & GELİŞİM PLATFORMU ✦ REHBER ÖĞRETMEN ZAFER DEMİR ✦
+        </span>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:14}}>
+        {MODULLER.map(s=>(
+          <button key={s.id} onClick={()=>onSekme(s.id)} className="bn nefes-kenarlik"
+            style={{"--krenk":s.renk,"--krenk-bg":`${s.renk}15`,padding:"22px 16px 18px",borderRadius:18,cursor:"pointer",textAlign:"left"}}>
+            <div style={{fontSize:38,marginBottom:10}}>{s.em}</div>
+            <div className="or" style={{fontSize:12,fontWeight:700,color:s.renk,marginBottom:6}}>{s.ad}</div>
+            <div style={{fontSize:11,fontFamily:"Inter",color:C.text2,lineHeight:1.5}}>{s.aciklama}</div>
+          </button>
+        ))}
+        {/* Kılavuz Öğretmen — tam genişlik */}
+        <button onClick={()=>onSekme("kilavuz")} className="bn nefes-kenarlik"
+          style={{"--krenk":C.purple,"--krenk-bg":`${C.purple}15`,gridColumn:"1/-1",padding:"22px 16px 18px",borderRadius:18,cursor:"pointer",textAlign:"left",display:"flex",gap:14,alignItems:"center"}}>
+          <span style={{fontSize:44}}>{KILAVUZ_EM}</span>
+          <div>
+            <div className="or" style={{fontSize:14,fontWeight:700,color:C.purple,marginBottom:6}}>{KILAVUZ_AD}</div>
+            <div style={{fontSize:12,fontFamily:"Inter",color:C.text2,lineHeight:1.5}}>Yanlışlarından Sokratik yöntemle öğren — kadın sesiyle konuşur</div>
+          </div>
+        </button>
+      </div>
+      <div style={{padding:"14px 16px",borderRadius:14,background:`${C.green}08`,border:`1px solid ${C.green}33`,textAlign:"center"}}>
+        <div style={{fontSize:9,fontFamily:"Inter",fontWeight:800,color:C.green,letterSpacing:".15em",marginBottom:4}}>OKUL MÜDÜRÜ MÜCAHİT ÇITIR</div>
+        <div style={{fontSize:10,fontFamily:"Inter",color:C.text3}}>Pursaklar İmam Hatip Ortaokulu · LGS 2027</div>
+      </div>
+    </div>
+  );
+}
+
+// ── KİLAVUZ BAĞIMSIZ SAYFA ──
+function KilavuzSayfa({onGeri}){
+  const [secDers,setSecDers]=useState("mat");
+  const [secKonu,setSecKonu]=useState("");
+  const [zorluk,setZorluk]=useState("orta");
+  const [uretilen,setUretilen]=useState(null);
+  const [yukleniyor,setYukleniyor]=useState(false);
+  const [cevap,setCevap]=useState(null);
+  const [goster,setGoster]=useState(false);
+  const [kilavuzAcik,setKilavuzAcik]=useState(false);
+  const ders=DERSLER.find(d=>d.id===secDers);
+  const konular=KONULAR[secDers]||[];
+
+  async function soruGetir(){
+    setYukleniyor(true);setUretilen(null);setCevap(null);setGoster(false);
+    const konu=secKonu||konular[Math.floor(Math.random()*konular.length)];
+    try{
+      const r=await callClaude(
+        `Ders:${ders.ad}\nKonu:${konu}\nZorluk:${zorluk}\nJSON:\n{"soru":"...","A":"...","B":"...","C":"...","D":"...","dogru":"A/B/C/D","aciklama":"...","konu":"${konu}","zorluk":"${zorluk}"}`,
+        MEB_SISTEM,800
+      );
+      const clean=r.replace(/```json\s*/gi,"").replace(/```\s*/g,"").trim();
+      setUretilen(JSON.parse(clean.slice(clean.indexOf("{"),clean.lastIndexOf("}")+1)));
+    }catch{
+      setUretilen({soru:"Fotosentezde bitkiler atmosfere hangi gazı verir?",A:"CO₂",B:"O₂",C:"N₂",D:"H₂",dogru:"B",aciklama:"Fotosentezde O₂ üretilir.",konu,zorluk,yerel:true});
+    }
+    setYukleniyor(false);
+  }
+
+  function secCevap(h){
+    if(goster)return;
+    setCevap(h);sesiCal(h===uretilen.dogru?"dogru":"yanlis");setGoster(true);
+  }
+
+  return(
+    <PageWrapper title={KILAVUZ_AD} emoji={KILAVUZ_EM} color={C.purple} onGeri={onGeri}>
+      <div style={{padding:"12px 16px",borderRadius:12,background:`${C.purple}0D`,border:`1px solid ${C.purple}33`,marginBottom:14,display:"flex",gap:12,alignItems:"center"}}>
+        <span style={{fontSize:28}}>{KILAVUZ_EM}</span>
+        <div style={{fontSize:12,fontFamily:"Inter",color:C.text2,lineHeight:1.6}}>Yanlış yaptığında cevabı söylemem. Soru sorarak seni doğruya <em style={{color:C.purple}}>kendin</em> götürürüm.</div>
+      </div>
+      {!uretilen&&(
+        <Card color={C.purple} style={{marginBottom:13}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,marginBottom:12}}>
+            {DERSLER.map(d=>(
+              <button key={d.id} onClick={()=>{setSecDers(d.id);setSecKonu("");}} style={{padding:"11px 6px",borderRadius:11,border:`2px solid ${secDers===d.id?d.renk:C.border}`,background:secDers===d.id?`${d.renk}15`:C.bg2,cursor:"pointer",textAlign:"center"}}>
+                <div style={{fontSize:22,marginBottom:4}}>{d.em}</div>
+                <div className="or" style={{fontSize:9,color:secDers===d.id?d.renk:C.text2}}>{d.ad.split(" ")[0].toUpperCase()}</div>
+              </button>
+            ))}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6,marginBottom:12}}>
+            <button onClick={()=>setSecKonu("")} style={{gridColumn:"1/-1",padding:"9px",borderRadius:9,border:`1.5px solid ${!secKonu?C.purple:C.border}`,background:!secKonu?`${C.purple}15`:C.bg2,cursor:"pointer",color:!secKonu?C.purple:C.text2,fontFamily:"Orbitron,monospace",fontSize:10}}>🎲 RASTGELE</button>
+            {konular.map(k=>(
+              <button key={k} onClick={()=>setSecKonu(k)} style={{padding:"7px",borderRadius:8,border:`1.5px solid ${secKonu===k?ders.renk:C.border}`,background:secKonu===k?`${ders.renk}15`:C.bg2,cursor:"pointer",color:secKonu===k?ders.renk:C.text2,fontFamily:"Inter",fontSize:10}}>{k}</button>
+            ))}
+          </div>
+          <div style={{display:"flex",gap:7,marginBottom:12}}>
+            {[{z:"kolay",c:C.green},{z:"orta",c:C.yellow},{z:"zor",c:C.red}].map(item=>(
+              <button key={item.z} onClick={()=>setZorluk(item.z)} style={{flex:1,padding:"8px",borderRadius:9,border:`1.5px solid ${zorluk===item.z?item.c:C.border}`,background:zorluk===item.z?`${item.c}15`:C.bg2,cursor:"pointer",color:zorluk===item.z?item.c:C.text2,fontFamily:"Orbitron,monospace",fontSize:9,fontWeight:700}}>{item.z.toUpperCase()}</button>
+            ))}
+          </div>
+          <button onClick={soruGetir} disabled={yukleniyor} className="bn" style={{width:"100%",padding:"13px",background:`linear-gradient(135deg,${C.purple},${C.neonD})`,border:"none",borderRadius:11,color:"#fff",fontFamily:"Orbitron,monospace",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+            {yukleniyor?"Hazırlanıyor...":` ${KILAVUZ_EM} SORU GETİR!`}
+          </button>
+        </Card>
+      )}
+      {yukleniyor&&<div style={{textAlign:"center",padding:"28px",background:C.card,borderRadius:14,marginBottom:13}}><div style={{display:"flex",justifyContent:"center",gap:4}}>{[C.purple,C.neon,C.yellow].map((c,i)=><span key={i} className="typing-dot" style={{color:c,animationDelay:`${i*.2}s`}}/>)}</div></div>}
+      {uretilen&&!yukleniyor&&(
+        <div style={{animation:"soruGel .5s ease both"}}>
+          <div style={{padding:"14px",borderRadius:12,background:C.bg2,border:`1px solid ${C.purple}33`,marginBottom:12}}>
+            <p style={{fontSize:13,fontFamily:"Inter",color:C.text,lineHeight:1.9}}>{uretilen.soru}</p>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
+            {["A","B","C","D"].map(h=>{
+              const m=uretilen[h];if(!m)return null;
+              const isDog=uretilen.dogru===h,isSec=cevap===h,rc=SORU_RENKLER[h];
+              let bg="transparent",bc=C.border,tc=C.text;
+              if(goster){if(isDog){bg=`${C.green}18`;bc=C.green;tc=C.green;}else if(isSec){bg=`${C.red}11`;bc=C.red;tc=C.red;}}
+              else if(isSec){bg=`${rc}15`;bc=rc;}
+              return(
+                <button key={h} onClick={()=>secCevap(h)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:11,background:bg,border:`1px solid ${bc}`,cursor:goster?"default":"pointer",textAlign:"left",width:"100%",transition:"all .2s"}}>
+                  <div style={{width:30,height:30,borderRadius:8,background:`${rc}18`,border:`1.5px solid ${rc}55`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <span className="or" style={{fontSize:12,fontWeight:700,color:rc}}>{h}</span>
+                  </div>
+                  <span style={{fontFamily:"Inter",fontSize:12,color:tc,flex:1}}>{m}</span>
+                  {goster&&isDog&&<span>✅</span>}
+                  {goster&&isSec&&!isDog&&<span>❌</span>}
+                </button>
+              );
+            })}
+          </div>
+          {goster&&cevap!==uretilen.dogru&&(
+            <button onClick={()=>setKilavuzAcik(true)} className="bn" style={{width:"100%",padding:"14px",background:`linear-gradient(135deg,${C.purple},${C.neonD})`,border:"none",borderRadius:12,color:"#fff",fontFamily:"Orbitron,monospace",fontSize:12,fontWeight:700,cursor:"pointer",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+              <span style={{fontSize:22}}>{KILAVUZ_EM}</span> {KILAVUZ_AD} İLE ÖĞRENELİM!
+            </button>
+          )}
+          {goster&&(
+            <button onClick={()=>{setUretilen(null);setCevap(null);setGoster(false);}} className="bn" style={{width:"100%",padding:"12px",background:`${C.purple}18`,border:`1px solid ${C.purple}55`,borderRadius:10,color:C.purple,fontFamily:"Orbitron,monospace",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+              Yeni Soru {KILAVUZ_EM}
+            </button>
+          )}
+        </div>
+      )}
+      {kilavuzAcik&&uretilen&&<KilavuzModal soru={uretilen} dersRenk={ders.renk} dersEm={ders.em} onKapat={()=>setKilavuzAcik(false)}/>}
+    </PageWrapper>
+  );
+}
+
+// ── ANA APP ──
+function App(){
+  useEffect(injectCSS,[]);
+  const [sayfa,setSayfa]=useState("home");
+
+  // Neon parçacık arka planı
+  useEffect(()=>{
+    const canvas=document.getElementById("bg-canvas");
+    if(!canvas)return;
+    const ctx=canvas.getContext("2d");
+    let W=canvas.width=window.innerWidth,H=canvas.height=window.innerHeight;
+    const RENKLER=["#E040FB","#00E5AA","#8B5CF6","#FF4FC8","#FFD700"];
+    let pts=[];
+    function olustur(){pts=Array.from({length:60},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4,r:Math.random()*1.5+.5,renk:RENKLER[Math.floor(Math.random()*RENKLER.length)]}));}
+    olustur();
+    const onR=()=>{W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;olustur();};
+    window.addEventListener("resize",onR);
+    let raf;
+    function ciz(){
+      ctx.clearRect(0,0,W,H);
+      for(let i=0;i<pts.length;i++){
+        const p=pts[i];p.x+=p.vx;p.y+=p.vy;
+        if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;
+        for(let j=i+1;j<pts.length;j++){
+          const q=pts[j],d=Math.hypot(p.x-q.x,p.y-q.y);
+          if(d<120){ctx.strokeStyle=p.renk;ctx.globalAlpha=(1-d/120)*.25;ctx.lineWidth=.6;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();}
+        }
+      }
+      ctx.globalAlpha=1;
+      pts.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=p.renk;ctx.shadowColor=p.renk;ctx.shadowBlur=6;ctx.fill();});
+      ctx.shadowBlur=0;raf=requestAnimationFrame(ciz);
+    }
+    ciz();
+    return()=>{cancelAnimationFrame(raf);window.removeEventListener("resize",onR);};
+  },[]);
+
+  return(
+    <div style={{minHeight:"100vh",background:C.bg,color:C.text,position:"relative"}}>
+      <canvas id="bg-canvas" style={{position:"fixed",top:0,left:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:0,opacity:.5}}/>
+      <div style={{position:"relative",zIndex:1}}>
+        {/* Header */}
+        <div style={{background:C.bg2,borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,zIndex:50}}>
+          <div style={{maxWidth:680,margin:"0 auto",padding:"0 12px"}}>
+            <div style={{padding:"10px 0 8px",position:"relative",overflow:"hidden"}}>
+              <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#00E5AA88,#8B5CF688,transparent)"}}/>
+              {sayfa==="home"?(
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <DonenHalkaLogoBuyuk boyut={64}/>
+                  <div>
+                    <h1 className="or" style={{fontSize:13,color:C.green,fontWeight:900,margin:0}}>PURSAKLAR İMAM HATİP ORTAOKULU</h1>
+                    <div style={{fontSize:11,fontFamily:"Inter",color:`${C.green}AA`}}>LGS 2027 HEDEF & GELİŞİM PLATFORMU</div>
+                    <div style={{fontSize:9,fontFamily:"Inter",color:C.green,marginTop:2}}>OKUL MÜDÜRÜ MÜCAHİT ÇITIR</div>
+                  </div>
+                  <DonenHalkaLogoBuyuk boyut={64}/>
+                </div>
+              ):(
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <DonenHalkaLogo boyut={30}/>
+                  <div>
+                    <div className="or" style={{fontSize:9,color:C.green,fontWeight:900}}>PURSAKLAR İMAM HATİP ORTAOKULU</div>
+                    <div style={{fontSize:8,fontFamily:"Inter",color:C.text3}}>LGS 2027 Platformu</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        {/* İçerik */}
+        <div style={{maxWidth:680,margin:"0 auto",padding:"14px 12px 80px"}}>
+          {sayfa==="home"&&<AnaSayfa onSekme={setSayfa}/>}
+          {sayfa==="hesaplayici"&&<PuanHesaplayici onGeri={()=>setSayfa("home")}/>}
+          {sayfa==="uretici"&&<SoruUretici onGeri={()=>setSayfa("home")}/>}
+          {sayfa==="hedef"&&<Hedef onGeri={()=>setSayfa("home")}/>}
+          {sayfa==="kilavuz"&&<KilavuzSayfa onGeri={()=>setSayfa("home")}/>}
+        </div>
+      </div>
+      {/* Footer */}
+      <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,textAlign:"center",padding:"10px 16px",background:"rgba(13,8,24,0.97)",borderTop:`2px solid ${C.green}99`,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+        <div style={{width:7,height:7,borderRadius:"50%",background:C.green,animation:"pulseMid 1.5s ease-in-out infinite"}}/>
+        <span className="or" style={{fontSize:12,fontWeight:900,letterSpacing:".14em",color:C.green}}>DEVELOPED BY KORHAN KONUK 2026</span>
+        <div style={{width:7,height:7,borderRadius:"50%",background:C.green,animation:"pulseMid 1.5s ease-in-out infinite"}}/>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
