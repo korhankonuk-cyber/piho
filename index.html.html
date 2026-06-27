@@ -402,7 +402,9 @@ function KilavuzModal({soru,dersRenk,dersEm,onKapat}){
       const kutlama=r.includes("Harika")||r.includes("Tebrik")||r.includes("Doğru")||r.includes("Evet")||r.includes("Bravo");
       const dogru_mu=input.toLowerCase().includes(soru.dogru.toLowerCase());
       if(dogru_mu&&kutlama) setCozuldu(true);
-      pihoTTS(r.slice(0,120));
+      // Tüm mesajı seslendir (nokta/soru işaretine kadar ilk cümle)
+      const ilkCumle = r.split(/(?<=[.!?])\s/)[0] || r.slice(0,150);
+      pihoTTS(ilkCumle);
       setMesajlar(p=>[...p,{rol:"koc",metin:r}]);
     }catch{
       setMesajlar(p=>[...p,{rol:"koc",metin:"Düşüncen mantıklı! Peki bu sorunun temel kavramı ne sence?"}]);
