@@ -697,6 +697,205 @@ function PuanHesaplayici({onGeri}){
   );
 }
 
+// ── FLASHCARD ──
+function Flashcard({onGeri}){
+  const [secDers,setSecDers]=useState("mat");
+  const [secKonu,setSecKonu]=useState("");
+  const [kartlar,setKartlar]=useState([]);
+  const [aktifIdx,setAktifIdx]=useState(0);
+  const [yuzu,setYuzu]=useState("on");
+  const [yukleniyor,setYukleniyor]=useState(false);
+  const [biliyorum,setBiliyorum]=useState([]);
+  const [bilmiyorum,setBilmiyorum]=useState([]);
+  const ders=DERSLER.find(d=>d.id===secDers);
+  const konular=KONULAR[secDers]||[];
+  const aktifKart=kartlar[aktifIdx];
+  const bitti=aktifIdx>=kartlar.length&&kartlar.length>0;
+
+  async function kartUret(){
+    if(!secKonu)return;
+    setYukleniyor(true);setKartlar([]);setAktifIdx(0);setBiliyorum([]);setBilmiyorum([]);setYuzu("on");
+    try{
+      const r=await callClaude(
+        `"${ders.ad}" dersi "${secKonu}" için LGS 2027'ye yönelik 8 adet flashcard. SADECE JSON:\n{"kartlar":[{"on":"Soru (max 15 kelime)","arka":"Cevap (max 25 kelime)","ipucu":"İpucu (max 8 kelime)"}]}`,
+        "Sen LGS uzmanı öğretmensin. SADECE geçerli JSON döndür.",1000
+      );
+      const clean=r.replace(/```json\s*/gi,"").replace(/```\s*/g,"").trim();
+      const js=clean.slice(clean.indexOf("{"),clean.lastIndexOf("}")+1);
+      setKartlar(JSON.parse(js).kartlar||[]);
+    }catch{
+      setKartlar([{on:"Bu konuda örnek soru nedir?",arka:"AI bağlantısı kurulamadı, tekrar dene.",ipucu:"Tekrar dene"}]);
+    }
+    setYukleniyor(false);
+  }
+
+  function cevapla(biliyor){
+    if(biliyor)setBiliyorum(p=>[...p,aktifIdx]);
+    else setBilmiyorum(p=>[...p,aktifIdx]);
+    setYuzu("on");setAktifIdx(p=>p+1);
+  }
+
+  return(
+    <PageWrapper title="FLASHCARD" emoji="🃏" color={C.pink} onGeri={onGeri}>
+      {kartlar.length===0&&(
+        <Card color={C.pink} style={{marginBottom:13}}>
+          <div style={{fontSize:9,fontFamily:"Inter",fontWeight:700,color:C.text3,letterSpacing:".15em",marginBottom:9}}>DERS SEÇ</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,marginBottom:14}}>
+            {DERSLER.map(d=>(
+              <button key={d.id} onClick={()=>{setSecDers(d.id);setSecKonu("");}}
+                style={{padding:"11px 6px 9px",borderRadius:11,border:`2px solid ${secDers===d.id?d.renk:C.border}`,background:secDers===d.id?`${d.renk}15`:C.bg2,cursor:"pointer",textAlign:"center"}}>
+                <div style={{fontSize:22,marginBottom:4}}>{d.em}</div>
+                <div className="or" style={{fontSize:9,fontWeight:700,color:secDers===d.id?d.renk:C.text2}}>{d.ad.split(" ")[0].toUpperCase()}</div>
+              </button>
+            ))}
+          </div>
+          <div style={{fontSize:9,fontFamily:"Inter",fontWeight:700,color:C.text3,letterSpacing:".15em",marginBottom:9}}>KONU SEÇ</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6,marginBottom:14}}>
+            {konular.map(k=>(
+              <button key={k} onClick={()=>setSecKonu(k)}
+                style={{padding:"8px 10px",borderRadius:9,border:`1.5px solid ${secKonu===k?ders.renk:C.border}`,background:secKonu===k?`${ders.renk}15`:C.bg2,cursor:"pointer",color:secKonu===k?ders.renk:C.text2,fontFamily:"Inter",fontSize:10}}>
+                {k}
+              </button>
+            ))}
+          </div>
+          <button onClick={kartUret} disabled={!secKonu||yukleniyor} className="bn"
+            style={{width:"100%",padding:"13px",background:secKonu?`linear-gradient(135deg,${C.pink},${C.purple})`:C.border,border:"none",borderRadius:11,color:secKonu?"#fff":C.text3,fontFamily:"Orbitron,monospace",fontSize:12,fontWeight:700,cursor:secKonu?"pointer":"not-allowed"}}>
+            {yukleniyor?"Kartlar hazırlanıyor...":"KARTLARI OLUŞTUR"}
+          </button>
+        </Card>
+      )}
+      {yukleniyor&&<div style={{textAlign:"center",padding:"28px",background:C.card,borderRadius:14,marginBottom:13}}><div style={{display:"flex",justifyContent:"center",gap:4}}>{[C.pink,C.purple,C.neon].map((c,i)=><span key={i} className="typing-dot" style={{color:c,animationDelay:`${i*.2}s`}}/>)}</div><div style={{fontSize:11,fontFamily:"Inter",color:C.text2,marginTop:8}}>Kartlar hazırlanıyor...</div></div>}
+      {kartlar.length>0&&!bitti&&(
+        <>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
+            {[{l:"KART",v:`${aktifIdx+1}/${kartlar.length}`,c:C.pink},{l:"BİLİYORUM",v:biliyorum.length,c:C.green},{l:"ÇALIŞACAĞIM",v:bilmiyorum.length,c:C.red}].map(item=>(
+              <div key={item.l} style={{padding:"9px 6px",borderRadius:10,background:`${item.c}10`,border:`1px solid ${item.c}33`,textAlign:"center"}}>
+                <div className="or" style={{fontSize:16,fontWeight:900,color:item.c,lineHeight:1}}>{item.v}</div>
+                <div style={{fontSize:8,fontFamily:"Inter",color:item.c,marginTop:3,opacity:.8}}>{item.l}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{height:5,background:C.bg2,borderRadius:3,overflow:"hidden",marginBottom:16}}>
+            <div style={{width:`${(aktifIdx/kartlar.length)*100}%`,height:"100%",background:`linear-gradient(90deg,${C.pink},${C.purple})`,borderRadius:3,transition:"width .4s"}}/>
+          </div>
+          <div onClick={()=>setYuzu(p=>p==="on"?"arka":"on")}
+            style={{cursor:"pointer",minHeight:200,borderRadius:20,border:`2px solid ${yuzu==="on"?C.pink:C.green}`,background:yuzu==="on"?`linear-gradient(135deg,${C.bg2},#1A0D35)`:`linear-gradient(135deg,#0A2018,#0D1820)`,padding:"28px 22px",textAlign:"center",position:"relative",overflow:"hidden",marginBottom:14}}>
+            <div style={{fontSize:9,fontFamily:"Inter",fontWeight:800,color:yuzu==="on"?C.pink:C.green,letterSpacing:".2em",marginBottom:16}}>{yuzu==="on"?"SORU — DOKUNARAK ÇEVİR":"CEVAP"}</div>
+            <div style={{fontSize:15,fontFamily:"Inter",fontWeight:600,color:C.text,lineHeight:1.8}}>{yuzu==="on"?aktifKart.on:aktifKart.arka}</div>
+            {yuzu==="arka"&&aktifKart.ipucu&&(
+              <div style={{marginTop:14,padding:"8px 14px",borderRadius:9,background:`${C.yellow}10`,border:`1px solid ${C.yellow}33`,display:"inline-block"}}>
+                <span style={{fontSize:10,fontFamily:"Inter",color:C.yellow}}>💡 {aktifKart.ipucu}</span>
+              </div>
+            )}
+          </div>
+          {yuzu==="arka"&&(
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>cevapla(false)} className="bn"
+                style={{flex:1,padding:"13px",background:`${C.red}18`,border:`1.5px solid ${C.red}55`,borderRadius:12,color:C.red,fontFamily:"Orbitron,monospace",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+                TEKRAR BAKARIM
+              </button>
+              <button onClick={()=>cevapla(true)} className="bn"
+                style={{flex:1,padding:"13px",background:`${C.green}18`,border:`1.5px solid ${C.green}55`,borderRadius:12,color:C.green,fontFamily:"Orbitron,monospace",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+                BİLİYORUM
+              </button>
+            </div>
+          )}
+        </>
+      )}
+      {bitti&&(
+        <Card color={biliyorum.length>=kartlar.length*.7?C.green:C.orange} style={{textAlign:"center",padding:"30px 20px"}}>
+          <div style={{fontSize:52,marginBottom:10}}>{biliyorum.length===kartlar.length?"🏆":"📚"}</div>
+          <div className="or" style={{fontSize:16,fontWeight:900,color:biliyorum.length>=kartlar.length*.7?C.green:C.orange,marginBottom:8}}>{biliyorum.length===kartlar.length?"MÜKEMMEL!":"DEVAM ET!"}</div>
+          <div style={{fontSize:12,fontFamily:"Inter",color:C.text2,marginBottom:20}}>{biliyorum.length} kart bildin · {bilmiyorum.length} kart tekrar gerekiyor</div>
+          <div style={{display:"flex",gap:9}}>
+            <button onClick={()=>{setAktifIdx(0);setYuzu("on");setBiliyorum([]);setBilmiyorum([]);}} className="bn" style={{flex:1,padding:"12px",background:`${C.pink}18`,border:`1px solid ${C.pink}55`,borderRadius:11,color:C.pink,fontFamily:"Orbitron,monospace",fontSize:10,fontWeight:700,cursor:"pointer"}}>TEKRAR</button>
+            <button onClick={()=>{setKartlar([]);setSecKonu("");}} className="bn" style={{flex:1,padding:"12px",background:`${C.neon}18`,border:`1px solid ${C.neon}55`,borderRadius:11,color:C.neon,fontFamily:"Orbitron,monospace",fontSize:10,fontWeight:700,cursor:"pointer"}}>YENİ KONU</button>
+          </div>
+        </Card>
+      )}
+    </PageWrapper>
+  );
+}
+
+// ── KONU ÖZETİ ──
+function KonuOzeti({onGeri}){
+  const [secDers,setSecDers]=useState("mat");
+  const [secKonu,setSecKonu]=useState("");
+  const [ozet,setOzet]=useState("");
+  const [yukleniyor,setYukleniyor]=useState(false);
+  const [zorluk,setZorluk]=useState("orta");
+  const ders=DERSLER.find(d=>d.id===secDers);
+  const konular=KONULAR[secDers]||[];
+
+  async function ozetUret(){
+    if(!secKonu)return;
+    setYukleniyor(true);setOzet("");
+    try{
+      const r=await callClaude(
+        `"${ders.ad}" dersi "${secKonu}" konusu için ${zorluk} seviyede LGS 2027'ye yönelik kısa özet yaz.\n1. Temel Kavramlar\n2. Formül/Kural (varsa)\n3. LGS'de Nasıl Çıkar?\n4. Akılda Kalma Tüyosu`,
+        "Sen LGS uzmanı öğretmensin. Türkçe, sade, madde madde yaz.",800
+      );
+      setOzet(r);
+    }catch{
+      setOzet("AI bağlantısı kurulamadı. Lütfen tekrar dene.");
+    }
+    setYukleniyor(false);
+  }
+
+  return(
+    <PageWrapper title="KONU ÖZETİ" emoji="📒" color={C.blue} onGeri={onGeri}>
+      <Card color={C.blue} style={{marginBottom:13}}>
+        <div style={{fontSize:9,fontFamily:"Inter",fontWeight:700,color:C.text3,letterSpacing:".15em",marginBottom:9}}>DERS SEÇ</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
+          {DERSLER.map(d=>(
+            <button key={d.id} onClick={()=>{setSecDers(d.id);setSecKonu("");setOzet("");}}
+              style={{padding:"12px 6px 10px",borderRadius:12,border:`2px solid ${secDers===d.id?d.renk:C.border}`,background:secDers===d.id?`${d.renk}15`:C.bg2,cursor:"pointer",textAlign:"center"}}>
+              <div style={{fontSize:24,marginBottom:5}}>{d.em}</div>
+              <div className="or" style={{fontSize:9,fontWeight:700,color:secDers===d.id?d.renk:C.text2}}>{d.ad.split(" ")[0].toUpperCase()}</div>
+            </button>
+          ))}
+        </div>
+        <div style={{fontSize:9,fontFamily:"Inter",fontWeight:700,color:C.text3,letterSpacing:".15em",marginBottom:9}}>KONU SEÇ</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6,marginBottom:14}}>
+          {konular.map(k=>(
+            <button key={k} onClick={()=>{setSecKonu(k);setOzet("");}}
+              style={{padding:"9px 10px",borderRadius:10,border:`1.5px solid ${secKonu===k?ders.renk:C.border}`,background:secKonu===k?`${ders.renk}15`:C.bg2,cursor:"pointer",textAlign:"center"}}>
+              <div style={{fontSize:10,fontFamily:"Inter",fontWeight:secKonu===k?700:500,color:secKonu===k?ders.renk:C.text2}}>{k}</div>
+            </button>
+          ))}
+        </div>
+        <div style={{fontSize:9,fontFamily:"Inter",fontWeight:700,color:C.text3,letterSpacing:".15em",marginBottom:9}}>SEVİYE</div>
+        <div style={{display:"flex",gap:8,marginBottom:14}}>
+          {[{z:"kolay",c:C.green},{z:"orta",c:C.yellow},{z:"zor",c:C.red}].map(item=>(
+            <button key={item.z} onClick={()=>setZorluk(item.z)}
+              style={{flex:1,padding:"9px 6px",borderRadius:10,border:`1.5px solid ${zorluk===item.z?item.c:C.border}`,background:zorluk===item.z?`${item.c}15`:C.bg2,cursor:"pointer",color:zorluk===item.z?item.c:C.text2,fontFamily:"Orbitron,monospace",fontSize:9,fontWeight:700}}>
+              {item.z.toUpperCase()}
+            </button>
+          ))}
+        </div>
+        <button onClick={ozetUret} disabled={!secKonu||yukleniyor} className="bn"
+          style={{width:"100%",padding:"13px",background:secKonu?`linear-gradient(135deg,${C.blue},${C.purple})`:C.border,border:"none",borderRadius:11,color:secKonu?"#fff":C.text3,fontFamily:"Orbitron,monospace",fontSize:12,fontWeight:700,cursor:secKonu?"pointer":"not-allowed",opacity:yukleniyor?.7:1}}>
+          {yukleniyor?"Özet hazırlanıyor...":"ÖZET OLUŞTUR"}
+        </button>
+      </Card>
+      {yukleniyor&&<div style={{textAlign:"center",padding:"28px",background:C.card,borderRadius:14,marginBottom:13}}><div style={{display:"flex",justifyContent:"center",gap:4}}>{[C.blue,C.purple,C.neon].map((c,i)=><span key={i} className="typing-dot" style={{color:c,animationDelay:`${i*.2}s`}}/>)}</div></div>}
+      {ozet&&!yukleniyor&&(
+        <Card color={ders.renk}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+            <span style={{fontSize:22}}>{ders.em}</span>
+            <div>
+              <div className="or" style={{fontSize:10,color:ders.renk,letterSpacing:".12em",fontWeight:700}}>{secKonu}</div>
+              <div style={{fontSize:9,fontFamily:"Inter",color:C.text3}}>{ders.ad} · {zorluk} seviye</div>
+            </div>
+          </div>
+          <div style={{height:1,background:`linear-gradient(90deg,${ders.renk}66,transparent)`,marginBottom:12}}/>
+          <div style={{fontSize:12,fontFamily:"Inter",color:C.text,lineHeight:1.9,whiteSpace:"pre-wrap"}}>{ozet}</div>
+        </Card>
+      )}
+    </PageWrapper>
+  );
+}
+
 // ── HEDEF LİSE (özet) ──
 const HEDEFLER_OZET=[
   {ad:"Ankara Fen Lisesi",puan:494.51,tur:"Fen",ilce:"Çankaya",renk:C.neon},
